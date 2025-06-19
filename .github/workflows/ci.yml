@@ -1,26 +1,30 @@
-name: Nuclei - Vulnerability Scan
+name: Nuclei Secret Scanning
 
 on:
   push:
-    branches: ['**']
+    branches:
+      - main
   pull_request:
-    branches: ['**']
-  workflow_dispatch:
 
 jobs:
-  nuclei-scan:
+  nuclei-secret-scan:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Nuclei - Vulnerability Scan
-        uses: projectdiscovery/nuclei-action@main
-        with:
-          target: .  # This will scan the current repository
-          exclude: '.git'  # Exclude the .git folder from the scan
+      - name: Install Nuclei
+        run: |
+          curl -sSfL https://github.com/projectdiscovery/nuclei/releases/latest/download/nuclei-linux-amd64.tar.gz | tar -xzv
+          sudo mv nuclei /usr/local/bin/
 
-      - name: GitHub Workflow artifacts
+      - name: Run Nuclei secret scanning templates
+        run: |
+          nuclei -t nuclei-templates/secrets/ -o nuclei-secrets-results.txt
+
+      - name: Upload scan results as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nuclei.log
-          path: nuclei.log
+          name: nuclei-secret-scan-results
+          path: nuclei-secrets-results.txt
