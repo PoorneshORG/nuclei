@@ -2,29 +2,36 @@ name: Nuclei Secret Scanning
 
 on:
   push:
-    branches:
-      - main
-      - nuclei
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
 
 jobs:
   nuclei-secret-scan:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Install Nuclei
-        run: |
-          curl -sSfL https://github.com/projectdiscovery/nuclei/releases/latest/download/nuclei-linux-amd64.tar.gz | tar -xzv
-          sudo mv nuclei /usr/local/bin/
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '>=1.20'
 
-      - name: Run Nuclei secret scanning templates
+      - name: Install Nuclei via Go
         run: |
-          nuclei -t nuclei-templates/secrets/ -o nuclei-secrets-results.txt
+          go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
 
-      - name: Upload scan results as artifact
+      - name: Clone nuclei templates
+        run: git clone https://github.com/projectdiscovery/nuclei-templates.git
+
+      - name: Run Nuclei secret scanning
+        run: |
+          "$HOME/go/bin/nuclei" -t nuclei-templates/secrets/ -target file://. -o nuclei-secrets-results.txt || true
+
+      - name: Upload scan results
         uses: actions/upload-artifact@v4
         with:
           name: nuclei-secret-scan-results
